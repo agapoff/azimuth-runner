@@ -1,0 +1,98 @@
+<resources>
+    <string name="app_name">Азимут</string>
+    <string name="title_activity_save_location">Сохранить место</string>
+    <string name="title_activity_load_location">Загрузить место</string>
+
+    <string name="set_bearing">Азимут, °</string>
+    <string name="set_latitude">Широта</string>
+    <string name="set_longitude">Долгота</string>
+    <string name="set_dist">Расстояние, м</string>
+
+    <string name="go">Старт</string>
+    <string name="load">Открыть</string>
+    <string name="save_current">Сохр. место</string>
+    <string name="save_target">Сохр. цель</string>
+
+    <string name="anchor">Запомнить текущее место</string>
+
+    <string name="action_settings">Настройки</string>
+    <string name="title_activity_settings">Настройки</string>
+
+    <string name="action_help">Помощь</string>
+    <string name="title_activity_help">Помощь</string>
+
+    <string name="action_donate">Donate</string>
+
+    <string name="save">Сохранить</string>
+    <string name="delete">Удалить</string>
+
+    <string name="unknown_position">Текущая позиция неизвестна</string>
+    <string name="obsolete_position">Данные о текущей позиции устарели</string>
+    <string name="no_target">Цель не установлена</string>
+    <string name="location_saved">Позиция сохранена</string>
+    <string name="wrong_distance">Некорректное расстояние</string>
+    <string name="wrong_bearing">Некорректный азимут</string>
+    <string name="wrong_latitude">Некорректная широта</string>
+    <string name="wrong_longitude">Некорректная долгота</string>
+
+    <string name="location_deleted">Позиция удалена</string>
+    <string name="location_not_deleted">Ошибка при удалении</string>
+
+    <string name="enable_location">Включить спутниковую навигацию</string>
+    <string name="location_is_off">Передача геоданных выключена в настройках.\nПожалуйста, включите её, чтобы приложение могло работать корректно</string>
+    <string name="location_settings">Настройки GPS</string>
+    <string name="error_enabling_location_service">Ошибка при включении сервиса геоданных</string>
+    <string name="cancel">Отмена</string>
+
+
+    <string name="meters">м</string>
+    <string name="milliseconds">мс</string>
+
+    <!-- Strings related to Debug -->
+
+    <string name="heading">Курс</string>
+    <string name="accuracy">Точность GPS</string>
+    <string name="current_longitude">Долгота текущая</string>
+    <string name="current_latitude">Широта текущая</string>
+    <string name="target_longitude">Долгота цели</string>
+    <string name="target_latitude">Широта цели</string>
+    <string name="bearing">Азимут</string>
+    <string name="last_location_update">Последнее обновление GPS</string>
+    <string name="never">никогда</string>
+
+    <!-- Strings related to Settings -->
+
+
+    <string name="pref_debug">Отладочная информация</string>
+    <string name="pref_debug_summ">Выводить координаты и прочие данные в режиме реального времени</string>
+    <string name="pref_battery_save">Режим экономии батареи</string>
+    <string name="pref_battery_save_summ">Менее точное и более долгое GPS-позиционирование</string>
+
+
+    <!-- Strings related to Help -->
+
+    <string name="help_page_intro">Это приложение поможет вам добраться до нужного места. Оно будет показывать, в каком направлении нужно двигаться и какое расстояние осталось пройти до цели.
+        Всё, что потребуется:\n
+        - наличие датчика магнитного поля в вашем устройстве\n
+        - включённая спутниковая навигация\n
+        - и, наконец, нужно задать цель\n\n
+    Есть несколько способов задать конечную цель.
+    </string>
+
+    <string name="help_text_version">Версия: </string>
+
+    <string name="help_text_section1">Ввести азимут и расстояние до цели от вашего текущего положения. Приложение сделает всё остальное.
+    </string>
+
+    <string name="help_text_section2">Ввести географические координаты своей цели. Как только приложение поймает спутники и определит ваше местоположение, оно покажет,
+        в какую сторону двигаться и сколько метров осталось пройти. Координаты можно вводить в любом формате.
+    </string>
+
+    <string name="help_text_section3">Ещё приложение может запомнить ваще текущее положение и показывать, как туда вернуться, куда бы вы ни пошли. Этот режим может, например, понадобиться,
+        если вы приехали к дремучему лесу и хотите потом найти место, где оставили свою машину.
+    </string>
+
+    <string name="help_text_section4">Ещё вы можете сохранить в записную книжку свою текущую позицию или свою цель, чтобы потом продолжить маршрут или просто вернуться на определённую точку.
+    </string>
+
+</resources>

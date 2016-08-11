@@ -1,0 +1,97 @@
+<resources>
+    <string name="app_name">Azimuth Runner</string>
+    <string name="title_activity_save_location">Save Location</string>
+    <string name="title_activity_load_location">Load Location</string>
+
+    <string name="set_bearing">Bearing, °</string>
+    <string name="set_latitude">Latitude</string>
+    <string name="set_longitude">Longitude</string>
+    <string name="set_dist">Distance, m</string>
+
+    <string name="go">Go</string>
+    <string name="load">Load</string>
+    <string name="save_current">Save Current</string>
+    <string name="save_target">Save Target</string>
+
+    <string name="anchor">Drop anchor</string>
+
+    <string name="action_settings">Settings</string>
+    <string name="title_activity_settings">Azimuth Settings</string>
+
+    <string name="action_help">Help</string>
+    <string name="title_activity_help">Azimuth Help</string>
+
+    <string name="action_donate">Donate</string>
+
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+
+    <string name="unknown_position">Current position is unknown</string>
+    <string name="obsolete_position">Current position is obsolete</string>
+    <string name="no_target">We have no target location</string>
+    <string name="location_saved">Location has been saved</string>
+    <string name="wrong_distance">Wrong distance</string>
+    <string name="wrong_bearing">Wrong bearng</string>
+    <string name="wrong_latitude">Wrong latitude</string>
+    <string name="wrong_longitude">Wrong longitude</string>
+
+    <string name="location_deleted">Location has been deleted</string>
+    <string name="location_not_deleted">Error deleting location</string>
+
+    <string name="enable_location">Enable Location</string>
+    <string name="location_is_off">Your Locations Settings is set to \'Off\'.\nPlease enable Location to use this app</string>
+    <string name="location_settings">Location Settings</string>
+    <string name="error_enabling_location_service">Error creating location service</string>
+    <string name="cancel">Cancel</string>
+
+
+    <string name="meters">m</string>
+    <string name="milliseconds">ms</string>
+
+    <!-- Strings related to Debug -->
+
+    <string name="heading">Heading</string>
+    <string name="accuracy">GPS Accuracy</string>
+    <string name="current_longitude">Current Longitude</string>
+    <string name="current_latitude">Current Latitude</string>
+    <string name="target_longitude">Target Longitude</string>
+    <string name="target_latitude">Target Latitude</string>
+    <string name="bearing">Bearing</string>
+    <string name="last_location_update">Last Location Update</string>
+    <string name="never">never</string>
+
+    <!-- Strings related to Settings -->
+
+    <string name="pref_debug">Show debug info</string>
+    <string name="pref_debug_summ">Display coordinates and other useful data in real time</string>
+    <string name="pref_battery_save">Battery saving mode</string>
+    <string name="pref_battery_save_summ">Less accurate GPS positioning and longer location obtaining after resuming the app</string>
+
+
+    <!-- Strings related to Help -->
+
+    <string name="help_page_intro">This app will lead you to the place you need. At any point of time it will show you the direction and
+        the distance to reach your destination. All you need is:\n
+        - compass sensor in your device\n
+        - enabled location service\n
+        - defined destination\n\n
+    There are several ways to define the destination.
+    </string>
+
+    <string name="help_text_version">Version: </string>
+
+    <string name="help_text_section1">You can enter the bearing and the distance to your target from your current location. The app will do the rest.
+    </string>
+
+    <string name="help_text_section2">You can also enter the absolute coordinates of your destination. The app will show you where to go (and how far)
+        once the GPS location has been obtained. Any coordinates format can be used.
+    </string>
+
+    <string name="help_text_section3">The app can also remember your current location and show how to return wherever you go. This mode can be useful
+        for example to remember the location of your car before you enter the dense forest.
+    </string>
+
+    <string name="help_text_section4">You can save your current or target location and load it later at any time to proceed your movement or to return to the place you have already been.
+    </string>
+
+</resources>

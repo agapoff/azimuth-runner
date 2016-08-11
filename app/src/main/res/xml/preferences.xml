@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <CheckBoxPreference
+        android:key="pref_debug"
+        android:title="@string/pref_debug"
+        android:summary="@string/pref_debug_summ"
+        android:defaultValue="false" />
+    <CheckBoxPreference
+        android:key="pref_battery_save"
+        android:title="@string/pref_battery_save"
+        android:summary="@string/pref_battery_save_summ"
+        android:defaultValue="false" />
+</PreferenceScreen>
