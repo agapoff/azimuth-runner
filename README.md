@@ -23,8 +23,7 @@ Available on Google Play at https://play.google.com/store/apps/details?id=name.a
 
 ### Screenshots
 
-![](https://raw.github.com/agapoff/azimuth-runner/master/en-screen1.jpg | width=200)
-![](https://raw.github.com/agapoff/azimuth-runner/master/en-screen2.jpg | width=200)
+![](https://raw.github.com/agapoff/azimuth-runner/master/en-screen1.jpg) ![](https://raw.github.com/agapoff/azimuth-runner/master/en-screen2.jpg)
 
 
 ### Contributing
