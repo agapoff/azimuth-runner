@@ -20,7 +20,6 @@ import android.widget.Toast;
  * When an activity hosts a keyboardView, this class allows several EditText's to register for it.
  *
  * @author Maarten Pennings
- * @date   2012 December 23
  */
 class CustomKeyboard {
 
@@ -45,35 +44,37 @@ class CustomKeyboard {
         @Override public void onKey(int primaryCode, int[] keyCodes) {
             // NOTE We can say '<Key android:codes="49,50" ... >' in the xml file; all codes come in keyCodes, the first in this list in primaryCode
             // Get the EditText and its Editable
+            if (mHostActivity == null) {
+                return;
+            }
 
             View focusCurrent = mHostActivity.getWindow().getCurrentFocus();
-            //if( focusCurrent==null || focusCurrent.getClass()!=EditText.class ) return;
 
-
-            //Toast.makeText(mHostActivity, "Hell", Toast.LENGTH_SHORT).show();
-
+            if (focusCurrent == null) {
+                return;
+            }
 
             EditText edittext = (EditText) focusCurrent;
             Editable editable = edittext.getText();
             int start = edittext.getSelectionStart();
             // Apply the key to the edittext
-            if( primaryCode==CodeCancel ) {
+            if (primaryCode == CodeCancel) {
                 hideCustomKeyboard();
-            } else if( primaryCode==CodeDelete ) {
-                if( editable!=null && start>0 ) editable.delete(start - 1, start);
-            } else if( primaryCode==CodeClear ) {
-                if( editable!=null ) editable.clear();
-            } else if( primaryCode==CodeLeft ) {
-                if( start>0 ) edittext.setSelection(start - 1);
-            } else if( primaryCode==CodeRight ) {
+            } else if (primaryCode == CodeDelete) {
+                if (editable != null && start > 0) editable.delete(start - 1, start);
+            } else if (primaryCode == CodeClear) {
+                if (editable != null) editable.clear();
+            } else if (primaryCode == CodeLeft) {
+                if (start > 0) edittext.setSelection(start - 1);
+            } else if (primaryCode == CodeRight) {
                 if (start < edittext.length()) edittext.setSelection(start + 1);
-            } else if( primaryCode==CodeAllLeft ) {
+            } else if (primaryCode == CodeAllLeft) {
                 edittext.setSelection(0);
-            } else if( primaryCode==CodeAllRight ) {
+            } else if (primaryCode == CodeAllRight) {
                 edittext.setSelection(edittext.length());
-            } else if ( primaryCode == CodeDegree) {
+            } else if (primaryCode == CodeDegree) {
                 if (editable != null) editable.insert(start, "°");
-            } else if ( primaryCode == CodeToggleMinus) {
+            } else if (primaryCode == CodeToggleMinus) {
                 if (editable != null) {
                     if (editable.toString().startsWith("-")) editable.delete(0, 1);
                     else editable.insert(0, "-");
@@ -117,8 +118,8 @@ class CustomKeyboard {
      * @param layoutid The id of the xml file containing the keyboard layout.
      */
     public CustomKeyboard(Activity host, int viewid, int layoutid) {
-        mHostActivity= host;
-        mKeyboardView= (KeyboardView)mHostActivity.findViewById(viewid);
+        mHostActivity = host;
+        mKeyboardView = (KeyboardView) mHostActivity.findViewById(viewid);
         mKeyboardView.setKeyboard(new Keyboard(mHostActivity, layoutid));
         mKeyboardView.setPreviewEnabled(false); // NOTE Do not show the preview balloons
         mKeyboardView.setOnKeyboardActionListener(mOnKeyboardActionListener);
@@ -135,7 +136,7 @@ class CustomKeyboard {
     public void showCustomKeyboard( View v ) {
         mKeyboardView.setVisibility(View.VISIBLE);
         mKeyboardView.setEnabled(true);
-        if( v!=null ) ((InputMethodManager)mHostActivity.getSystemService(Activity.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(v.getWindowToken(), 0);
+        if ( v != null ) ((InputMethodManager)mHostActivity.getSystemService(Activity.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(v.getWindowToken(), 0);
     }
 
     /** Make the CustomKeyboard invisible. */
@@ -151,7 +152,7 @@ class CustomKeyboard {
      */
     public void registerEditText(int resid) {
         // Find the EditText 'resid'
-        EditText edittext= (EditText)mHostActivity.findViewById(resid);
+        EditText edittext = (EditText) mHostActivity.findViewById(resid);
         // Make the custom keyboard appear
         edittext.setOnFocusChangeListener(new OnFocusChangeListener() {
             // NOTE By setting the on focus listener, we can show the custom keyboard when the edit box gets focus, but also hide it when the edit box loses focus
@@ -161,7 +162,8 @@ class CustomKeyboard {
         });
         edittext.setOnClickListener(new OnClickListener() {
             // NOTE By setting the on click listener, we can show the custom keyboard again, by tapping on an edit box that already had focus (but that had the keyboard hidden).
-            @Override public void onClick(View v) {
+            @Override
+            public void onClick(View v) {
                 showCustomKeyboard(v);
             }
         });

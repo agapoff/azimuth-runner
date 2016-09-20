@@ -27,13 +27,6 @@
             app:tabGravity="fill"/>
     </android.support.design.widget.AppBarLayout>
 
-    <!--android.support.v4.view.ViewPager
-        android:id="@+id/viewpager"
-        android:layout_width="match_parent"
-        android:layout_height="25pt"
-        android:layout_below="@+id/appbar"
-        /-->
-
     <name.agapoff.oresund.WrapContentViewPager
         android:id="@+id/viewpager"
         android:layout_width="match_parent"
@@ -99,7 +92,7 @@
         android:gravity="center"
         android:text="" />
 
-    <name.agapoff.oresund.KeyboardViewFix
+    <android.inputmethodservice.KeyboardView
         android:id="@+id/keyboardview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -108,4 +101,5 @@
         android:focusable="true"
         android:focusableInTouchMode="true"
         android:visibility="gone"/>
+
     </RelativeLayout>
