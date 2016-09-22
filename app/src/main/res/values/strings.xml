@@ -31,7 +31,7 @@
     <string name="no_target">We have no target location</string>
     <string name="location_saved">Location has been saved</string>
     <string name="wrong_distance">Wrong distance</string>
-    <string name="wrong_bearing">Wrong bearng</string>
+    <string name="wrong_bearing">Wrong bearing</string>
     <string name="wrong_latitude">Wrong latitude</string>
     <string name="wrong_longitude">Wrong longitude</string>
 
