@@ -105,6 +105,7 @@ public class LoadLocationActivity extends AppCompatActivity {
             }
 
         });
+        db.close();
 
     }
 

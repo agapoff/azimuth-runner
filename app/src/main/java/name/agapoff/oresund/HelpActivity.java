@@ -17,7 +17,7 @@ public class HelpActivity extends AppCompatActivity {
         tvVersion.setText(getVersionInfo());
     }
 
-    public String getVersionInfo() {
+    private String getVersionInfo() {
         String strVersion;
 
         PackageInfo packageInfo;

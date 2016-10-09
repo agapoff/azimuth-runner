@@ -49,8 +49,8 @@ public class SaveLocationActivity extends AppCompatActivity {
         values.put("longitude", longitude);
 
         long newRowId = db.insert("location", null, values);
+        db.close();
         Toast.makeText(SaveLocationActivity.this, R.string.location_saved, Toast.LENGTH_SHORT).show();
         SaveLocationActivity.this.finish();
-
     }
 }
