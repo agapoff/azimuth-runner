@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.hardware.GeomagneticField;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -69,6 +70,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     // Rotate Animation duration
     private static final int ROTATE_DURATION = 300;
 
+    // Magnetic heading will be avaraged for this period in ms
+    // Optimal value - half of ROTATE_DURATION
+    private static final int COMPASS_DELAY = 50;
+
     private LocationManager locationManager;
     private CustomKeyboard customKeyboard;
     private SharedPreferences preferences;
@@ -89,9 +94,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private long lastLocationUpdate;
     private float currentDegree = 0f;
     private float currentHeading = 0f;
+    private float currentHeadingAvg;
+    private int currentHeadingCount = 0;
+    private long lastHeadingUpdate = 0;
     private boolean rotationInProgress = false;
     private boolean rotationQueued = false;
-    private boolean batterySavingMode = false;
+    private boolean isBatterySavingMode = false;
+    private boolean isTrueNorthEnabled = false;
+    private float magneticDeclination = 0f;
+    private boolean isMagneticDeclinationCalculated = false;
+
 
     private ImageView image;
     private TextView tvDebug;
@@ -99,9 +111,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private TextView tvSatStatus;
     private ImageView ivSatIcon;
     public Switch GPSswitch;
-    private Toolbar mToolbar;
-    private TabLayout tabLayout;
-    private ViewPager viewPager;
 
     // Variables for smoothing the compass
     private float smoothFactorCompass = 0.5f; // 1 is no smoothing and 0 is never updating
@@ -114,10 +123,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
 
-        locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
         image = (ImageView) findViewById(R.id.imageViewCompass);
-        mToolbar = (Toolbar) findViewById(R.id.toolbar);
+        Toolbar mToolbar = (Toolbar) findViewById(R.id.toolbar);
 
         // TextView that will tell the user what degree is he heading
         tvDebug = (TextView) findViewById(R.id.tvDebug);
@@ -138,11 +147,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         //getSupportActionBar().setHomeButtonEnabled(true);
         getSupportActionBar().setDisplayHomeAsUpEnabled(false);
 
-        viewPager = (ViewPager) findViewById(R.id.viewpager);
-        setupViewPager(viewPager);
+        ViewPager mViewPager = (ViewPager) findViewById(R.id.viewpager);
+        setupViewPager(mViewPager);
 
-        tabLayout = (TabLayout) findViewById(R.id.tabs);
-        tabLayout.setupWithViewPager(viewPager);
+        TabLayout tabLayout = (TabLayout) findViewById(R.id.tabs);
+        tabLayout.setupWithViewPager(mViewPager);
         tabLayout.getTabAt(0).setIcon(R.drawable.ic_compass2);
         tabLayout.getTabAt(1).setIcon(R.drawable.ic_coords);
         tabLayout.getTabAt(2).setIcon(R.drawable.ic_anchor);
@@ -161,18 +170,22 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             tvDebug.setVisibility(View.INVISIBLE);
         }
 
-        batterySavingMode = preferences.getBoolean("pref_battery_save", false);
+        isBatterySavingMode = preferences.getBoolean("pref_battery_save", false);
         int sensorSamplingPeriod;
-        if (batterySavingMode) {
+        if (isBatterySavingMode) {
             sensorSamplingPeriod = SensorManager.SENSOR_DELAY_NORMAL;
-            //if (GPSswitch != null && GPSswitch.isChecked() && !locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) enableLocationUpdates();
-        }
-        else {
-            sensorSamplingPeriod = SensorManager.SENSOR_DELAY_GAME;
+        } else {
+            sensorSamplingPeriod = SensorManager.SENSOR_DELAY_UI;
         }
         sensorManager.registerListener(this, accelerometer, sensorSamplingPeriod);
         sensorManager.registerListener(this, magnetometer, sensorSamplingPeriod);
         if (GPSswitch != null && GPSswitch.isChecked()) enableLocationUpdates();
+
+        isTrueNorthEnabled = preferences.getBoolean("pref_true_north", false);
+        if (!isTrueNorthEnabled) {
+            magneticDeclination = 0f;
+            isMagneticDeclinationCalculated = false;
+        }
     }
 
     @Override
@@ -182,7 +195,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // to stop the listener and save battery
         sensorManager.unregisterListener(this);
 
-        if (batterySavingMode) disableLocationUpdates();
+        if (isBatterySavingMode) disableLocationUpdates();
     }
 
     @Override
@@ -193,11 +206,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     public void onBackPressed() {
         // NOTE Trap the back key: when the CustomKeyboard is still visible hide it, only when it is invisible, finish activity
-        if( customKeyboard.isCustomKeyboardVisible() ) customKeyboard.hideCustomKeyboard(); else this.finish();
+        if (customKeyboard.isCustomKeyboardVisible()) customKeyboard.hideCustomKeyboard();
+        else this.finish();
     }
 
     @Override
-    protected void onActivityResult (int requestCode, int resultCode, Intent data) {
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         // Handling feedback from enabling the GPS
         if (resultCode == 0) {
@@ -212,7 +226,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // Handling feedback from loading the location
         else if (requestCode == 1) {
             if (resultCode == RESULT_OK) {
-                GoToSavedLocation(data.getDoubleExtra("latitude",0), data.getDoubleExtra("longitude",0));
+                GoToSavedLocation(data.getDoubleExtra("latitude", 0), data.getDoubleExtra("longitude", 0));
             }
         }
     }
@@ -226,27 +240,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     if (enableLocationUpdates()) GPSswitch.setChecked(true);
                 }
-                return;
             }
         }
     }
 
 
     private boolean enableLocationUpdates() {
-        if(!checkLocation()) return false;
+        if (!checkLocation()) return false;
 
         try {
             //locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListenerGPS);
-            if (batterySavingMode) locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2 * MIN_TIME_BW_UPDATES, 2 * MIN_DISTANCE_CHANGE_FOR_UPDATES, locationListenerGPS);
-                else locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATES, locationListenerGPS);
+            if (isBatterySavingMode)
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2 * MIN_TIME_BW_UPDATES, 2 * MIN_DISTANCE_CHANGE_FOR_UPDATES, locationListenerGPS);
+            else
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, MIN_TIME_BW_UPDATES, MIN_DISTANCE_CHANGE_FOR_UPDATES, locationListenerGPS);
             locationManager.addGpsStatusListener(gpsStatusListener);
-        }
-        catch (SecurityException ex) {
+        } catch (SecurityException ex) {
             Toast.makeText(MainActivity.this, getString(R.string.error_enabling_location_service) + ": " + ex.getMessage() + " " +
                     locationManager.getAllProviders().toString(), Toast.LENGTH_SHORT).show();
             return false;
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             Toast.makeText(MainActivity.this, getString(R.string.error_enabling_location_service) + ": " + ex.getMessage() + " " +
                     locationManager.getAllProviders().toString(), Toast.LENGTH_SHORT).show();
             return false;
@@ -256,15 +269,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private boolean disableLocationUpdates() {
         try {
-             locationManager.removeUpdates(locationListenerGPS);
-        }
-        catch (SecurityException ex) {
+            locationManager.removeUpdates(locationListenerGPS);
+        } catch (SecurityException ex) {
             Toast.makeText(MainActivity.this, "Error disabling location service: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
             return false;
         }
 
         tvSatStatus.setText("");
-        if (currentSatIconColor != "red") {
+        if (! currentSatIconColor.equals("red")) {
             ivSatIcon.setImageResource(R.drawable.sat_red);
             currentSatIconColor = "red";
         }
@@ -282,20 +294,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private void showAlert() {
         final AlertDialog.Builder dialog = new AlertDialog.Builder(this);
         dialog.setTitle(R.string.enable_location)
-            .setMessage(R.string.location_is_off)
-            .setPositiveButton(R.string.location_settings, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface paramDialogInterface, int paramInt) {
-                    Intent myIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                    //startActivity(myIntent);
-                    startActivityForResult(myIntent, 1);
-                }
-            })
-            .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface paramDialogInterface, int paramInt) {
-                }
-            });
+                .setMessage(R.string.location_is_off)
+                .setPositiveButton(R.string.location_settings, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface paramDialogInterface, int paramInt) {
+                        Intent myIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                        //startActivity(myIntent);
+                        startActivityForResult(myIntent, 1);
+                    }
+                })
+                .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface paramDialogInterface, int paramInt) {
+                    }
+                });
         dialog.show();
     }
 
@@ -305,15 +317,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 666);
             return false;
         }
-        if(!isLocationEnabled())
+        if (!isLocationEnabled())
             showAlert();
         return isLocationEnabled();
     }
 
     void closeSoftKeyboard(View view) {
-        if ( customKeyboard.isCustomKeyboardVisible() ) customKeyboard.hideCustomKeyboard();
+        if (customKeyboard.isCustomKeyboardVisible()) customKeyboard.hideCustomKeyboard();
         if (view != null) {
-            InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
     }
@@ -325,16 +337,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         EditText distanceInput = (EditText) findViewById(R.id.setDistance);
         EditText bearingInput = (EditText) findViewById(R.id.setBearing);
         try {
-            targetDistance = Float.parseFloat( distanceInput.getText().toString() );
-        }
-        catch (NumberFormatException ex) {
+            targetDistance = Float.parseFloat(distanceInput.getText().toString());
+        } catch (NumberFormatException ex) {
             Toast.makeText(MainActivity.this, R.string.wrong_distance, Toast.LENGTH_SHORT).show();
             distanceInput.setText("0");
         }
         try {
             targetBearing = Float.parseFloat(bearingInput.getText().toString());
-        }
-        catch (NumberFormatException ex) {
+        } catch (NumberFormatException ex) {
             Toast.makeText(MainActivity.this, R.string.wrong_bearing, Toast.LENGTH_SHORT).show();
             bearingInput.setText("0");
         }
@@ -354,16 +364,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         rotateArrow();
     }
 
-    public double parseCoord( String line) {
-        int multiplier = line.startsWith("-")?-1:1;
+    private double parseCoord(String line) {
+        int multiplier = line.startsWith("-") ? -1 : 1;
         Pattern r = Pattern.compile("^-?([\\.\\d]+)°?([\\.\\d]*)'?([\\.\\d]*)\"?");
         Matcher m = r.matcher(line);
-        if (m.find( )) {
+        if (m.find()) {
             float deg = Float.parseFloat(m.group(1));
-            float min = m.group(2)==null || m.group(2).isEmpty()?0:Float.parseFloat(m.group(2));
-            float sec = m.group(3)==null || m.group(3).isEmpty()?0:Float.parseFloat(m.group(3));
+            float min = m.group(2) == null || m.group(2).isEmpty() ? 0 : Float.parseFloat(m.group(2));
+            float sec = m.group(3) == null || m.group(3).isEmpty() ? 0 : Float.parseFloat(m.group(3));
             //Toast.makeText(MainActivity.this, "e-" + m.group(1) + "-" + m.group(2) + "-" + m.group(3), Toast.LENGTH_SHORT).show();
-            return multiplier * (deg + min/60.0 + sec/3600.0);
+            return multiplier * (deg + min / 60.0 + sec / 3600.0);
         } else {
             throw new NumberFormatException();
         }
@@ -384,19 +394,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         EditText latitudeInput = (EditText) findViewById(R.id.setLatitude);
         EditText longitudeInput = (EditText) findViewById(R.id.setLongitude);
 
-        double targetLatitude =0f, targetLongitude = 0f;
+        double targetLatitude = 0f, targetLongitude = 0f;
         try {
-            targetLatitude = parseCoord( latitudeInput.getText().toString() );
-        }
-        catch (NumberFormatException ex) {
+            targetLatitude = parseCoord(latitudeInput.getText().toString());
+        } catch (NumberFormatException ex) {
             Toast.makeText(MainActivity.this, R.string.wrong_latitude, Toast.LENGTH_SHORT).show();
             return;
         }
 
         try {
             targetLongitude = parseCoord(longitudeInput.getText().toString());
-        }
-        catch (NumberFormatException ex) {
+        } catch (NumberFormatException ex) {
             Toast.makeText(MainActivity.this, R.string.wrong_longitude, Toast.LENGTH_SHORT).show();
             return;
         }
@@ -441,22 +449,22 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         rotateArrow();
     }
 
-    public float normalizeDegree(float from, float to) {
+    private float normalizeDegree(float from, float to) {
         if (Math.abs(to - from) > 180) {
             if (from > to) to += 360;
             else to -= 360;
-        }
-        else return to;
+        } else return to;
         return normalizeDegree(from, to);
     }
 
-    public void rotateArrow() {
+    private void rotateArrow() {
         //if (System.currentTimeMillis() < rotationEndTimeMillis) return;
         if (rotationInProgress) {
             rotationQueued = true;
             return;
         }
-        if (System.currentTimeMillis() - lastLocationUpdate > OBSOLETE_POSITION_THRESHOLD && currentSatIconColor != "red") updateSatelliteIcon();
+        if (System.currentTimeMillis() - lastLocationUpdate > OBSOLETE_POSITION_THRESHOLD && ! currentSatIconColor.equals("red"))
+            updateSatelliteIcon();
 
         rotationQueued = false;
         rotationInProgress = true;
@@ -480,17 +488,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // Start the animation
         image.startAnimation(ra);
 
-        ra.setAnimationListener(new Animation.AnimationListener(){
+        ra.setAnimationListener(new Animation.AnimationListener() {
             @Override
             public void onAnimationStart(Animation arg0) {
             }
+
             @Override
             public void onAnimationRepeat(Animation animation) {
             }
+
             @Override
             public void onAnimationEnd(Animation arg0) {
                 rotationInProgress = false;
-                if (rotationQueued)  {
+                if (rotationQueued) {
                     //Log.d(TAG, "end " + image.getRot);
                     rotateArrow();
                 }
@@ -501,10 +511,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         currentDegree = newDegree;
 
         CharSequence summary = getString(R.string.heading) + ": " + Math.round(currentHeading);
+
+        if (isTrueNorthEnabled && isMagneticDeclinationCalculated) {
+            summary = summary + "\n" + getString(R.string.magnetic_declination) + ": " + magneticDeclination;
+        }
+
         if (currentAccuracy > 1000 || currentLocation == null) {
             summary = summary + "\n" + getString(R.string.accuracy) + ": n/a";
-        }
-        else {
+        } else {
             summary = summary + "\n" + getString(R.string.accuracy) + ": " + currentAccuracy + "\n" + getString(R.string.current_latitude) + ": " +
                     currentLocation.getLatitude() + "\n" + getString(R.string.current_longitude) + ": " + currentLocation.getLongitude();
         }
@@ -518,29 +532,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         summary = summary + "\n" + getString(R.string.last_location_update) + ": ";
         if (lastLocationUpdate != 0) {
             summary = summary + "" + Math.round(System.currentTimeMillis() - lastLocationUpdate) + " " + getString(R.string.milliseconds);
-        }
-        else {
+        } else {
             summary = summary + getString(R.string.never);
         }
 
         tvDebug.setText(summary);
     }
 
-    public float smoothRotation(float newDegree) {
+    private float smoothRotation(float newDegree) {
         if (Math.abs(newDegree - currentDegree) < 180) {
             if (Math.abs(newDegree - currentDegree) > smoothThresholdCompass) {
                 return newDegree;
             }
             return currentDegree + smoothThresholdCompass * (newDegree - currentDegree);
-        }
-        else {
+        } else {
             if (360f - Math.abs(newDegree - currentDegree) > smoothThresholdCompass) {
                 return newDegree;
             }
             if (currentDegree > newDegree) {
                 return (currentDegree + smoothFactorCompass * ((360 + newDegree - currentDegree) % 360) + 360) % 360;
-            }
-            else {
+            } else {
                 return (currentDegree - smoothFactorCompass * ((360 - newDegree + currentDegree) % 360) + 360) % 360;
             }
         }
@@ -572,44 +583,48 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     };
 
-    public void updateGpsStatus() {
+    private void updateGpsStatus() {
         satellitesTotal = 0;
         satellitesInFix = 0;
-        for (GpsSatellite satellite : locationManager.getGpsStatus(null).getSatellites()) {
-            satellitesTotal++;
-            if(satellite.usedInFix()) {
-                satellitesInFix++;
+        try {
+            for (GpsSatellite satellite : locationManager.getGpsStatus(null).getSatellites()) {
+                satellitesTotal++;
+                if (satellite.usedInFix()) {
+                    satellitesInFix++;
+                }
             }
+        } catch (SecurityException ex) {
+            Log.e(TAG, "Security Exception " + ex.toString());
         }
 
         updateSatelliteIcon();
     }
 
-    public void updateSatelliteIcon() {
+    private void updateSatelliteIcon() {
         CharSequence status = satellitesInFix + " / " + satellitesTotal;
         if (currentAccuracy < 1000 && currentLocation != null &&
                 System.currentTimeMillis() - lastLocationUpdate < OBSOLETE_POSITION_THRESHOLD) {
-                    status = status + "\n" + currentAccuracy + " " + getString(R.string.meters);
+            status = status + "\n" + currentAccuracy + " " + getString(R.string.meters);
         }
         tvSatStatus.setText(status);
 
         if (currentAccuracy < 1000 && currentLocation != null) {
             if (System.currentTimeMillis() - lastLocationUpdate < OBSOLETE_POSITION_THRESHOLD) {
                 if (System.currentTimeMillis() - lastLocationUpdate > WARNING_POSITION_THRESHOLD || currentAccuracy > WARNING_ACCURACY_THRESHOLD) {
-                    if (currentSatIconColor != "yellow") {
+                    if (! currentSatIconColor.equals("yellow")) {
                         ivSatIcon.setImageResource(R.drawable.sat_yellow);
                         currentSatIconColor = "yellow";
                     }
                     return;
                 }
-                if (currentSatIconColor != "green") {
+                if (! currentSatIconColor.equals("green")) {
                     ivSatIcon.setImageResource(R.drawable.sat_green);
                     currentSatIconColor = "green";
                 }
                 return;
             }
         }
-        if (currentSatIconColor != "red") {
+        if (! currentSatIconColor.equals("red")) {
             ivSatIcon.setImageResource(R.drawable.sat_red);
             currentSatIconColor = "red";
         }
@@ -618,7 +633,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private final LocationListener locationListenerGPS = new LocationListener() {
         public void onLocationChanged(Location location) {
-            currentLocation = new Coordinates(location.getLatitude(),location.getLongitude());
+            currentLocation = new Coordinates(location.getLatitude(), location.getLongitude());
             currentAccuracy = location.getAccuracy();
             lastLocationUpdate = System.currentTimeMillis();
             updateSatelliteIcon();
@@ -635,6 +650,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     rotateArrow();
                 }
             });
+
+            if (isTrueNorthEnabled && !isMagneticDeclinationCalculated) {
+                magneticDeclination = new GeomagneticField((float) location.getLatitude(), (float) location.getLongitude(), 0, System.currentTimeMillis()).getDeclination();
+                isMagneticDeclinationCalculated = true;
+                Log.d(TAG, "Magnetic declination " + magneticDeclination);
+            }
         }
 
         @Override
@@ -683,8 +704,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             if (SensorManager.getRotationMatrix(R, I, mGravity, mGeomagnetic)) {
                 float orientation[] = new float[3];
                 SensorManager.getOrientation(R, orientation);
-                currentHeading = ((float) Math.toDegrees(orientation[0]) + 360) % 360; // orientation contains: azimut, pitch and roll
-                rotateArrow();
+                currentHeading = ((float) Math.toDegrees(orientation[0]) + 360 + magneticDeclination) % 360; // orientation contains: azimut, pitch and roll
+
+                currentHeadingAvg = (currentHeadingAvg * currentHeadingCount + normalizeDegree(currentHeadingAvg, currentHeading)) / ++currentHeadingCount;
+                if (System.currentTimeMillis() - lastHeadingUpdate > COMPASS_DELAY) {
+                    currentHeading = currentHeadingAvg;
+                    rotateArrow();
+                    currentHeadingCount = 0;
+                    currentHeadingAvg = 180;
+                    lastHeadingUpdate = System.currentTimeMillis();
+                }
             }
         }
     }
@@ -701,6 +730,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         public double getLatitude() {
             return latitude;
         }
+
         public double getLongitude() {
             return longitude;
         }
@@ -715,8 +745,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             this.bearing = bearing;
         }
 
-        public double getDistance() { return distance; }
-        public double getBearing() { return bearing; }
+        public double getDistance() {
+            return distance;
+        }
+
+        public double getBearing() {
+            return bearing;
+        }
     }
 
     public Coordinates getCoordinatesByDistanceAndBearingPlain(Coordinates coordinates, double distance, double bearing) {
@@ -726,10 +761,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         double x1 = coordinates.getLongitude();
         int metersPerDegree = 111300;
 
-        y2 = y1 + Math.cos(Math.toRadians(bearing))*distance/metersPerDegree;
-        x2 = x1 + Math.sin(Math.toRadians(bearing))*distance/(metersPerDegree*Math.cos(Math.toRadians(y1)));
+        y2 = y1 + Math.cos(Math.toRadians(bearing)) * distance / metersPerDegree;
+        x2 = x1 + Math.sin(Math.toRadians(bearing)) * distance / (metersPerDegree * Math.cos(Math.toRadians(y1)));
 
-        return new Coordinates(y2,x2);
+        return new Coordinates(y2, x2);
     }
 
     public PolarCoordinates getDistanceAndBearingByCoordinatesPlain(Coordinates startCoordinates, Coordinates targetCoordinates) {
@@ -740,9 +775,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         int metersPerDegree = 111300;
         double distance, bearing;
 
-        bearing = Math.atan2( (x2 - x1) * Math.cos( Math.toRadians( (y1 + y2) / 2 ) ), y2 - y1 );
+        bearing = Math.atan2((x2 - x1) * Math.cos(Math.toRadians((y1 + y2) / 2)), y2 - y1);
         //distance = ( y2 - y1 ) * metersPerDegree / Math.cos(bearing);
-        distance = metersPerDegree * Math.sqrt( Math.pow( y2 - y1, 2 ) + Math.pow( (x2 - x1) * Math.cos( Math.toRadians( (y1 + y2) / 2 ) ), 2 ) );
+        distance = metersPerDegree * Math.sqrt(Math.pow(y2 - y1, 2) + Math.pow((x2 - x1) * Math.cos(Math.toRadians((y1 + y2) / 2)), 2));
 
         return new PolarCoordinates(distance, (Math.toDegrees(bearing) + 360) % 360);
     }
@@ -753,12 +788,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         double x1 = coordinates.getLongitude();
         int earthRadius = 6371000;
 
-        y2 = Math.asin( Math.sin( Math.toRadians(y1) ) * Math.cos( distance/earthRadius ) + Math.cos( Math.toRadians(y1) ) * Math.sin( distance/earthRadius ) * Math.cos( Math.toRadians(bearing) ));
-        xDelta = Math.atan2( Math.sin( Math.toRadians(bearing) ) * Math.sin( distance/earthRadius ) * Math.cos( Math.toRadians(y1) ),
-                Math.cos( distance/earthRadius ) - Math.sin( Math.toRadians(y1) ) * Math.sin( Math.toRadians(y1) ));
+        y2 = Math.asin(Math.sin(Math.toRadians(y1)) * Math.cos(distance / earthRadius) + Math.cos(Math.toRadians(y1)) * Math.sin(distance / earthRadius) * Math.cos(Math.toRadians(bearing)));
+        xDelta = Math.atan2(Math.sin(Math.toRadians(bearing)) * Math.sin(distance / earthRadius) * Math.cos(Math.toRadians(y1)),
+                Math.cos(distance / earthRadius) - Math.sin(Math.toRadians(y1)) * Math.sin(Math.toRadians(y1)));
         x2 = x1 + Math.toDegrees(xDelta);
 
-        return new Coordinates(Math.toDegrees(y2),x2);
+        return new Coordinates(Math.toDegrees(y2), x2);
     }
 
     public void saveTargetLocation(View view) {
@@ -774,7 +809,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         startActivity(intent);
     }
 
-    public void saveCurrentLocation(View view) {
+    private void saveCurrentLocation(View view) {
 
         if (currentLocation == null) {
             Toast.makeText(MainActivity.this, R.string.unknown_position, Toast.LENGTH_SHORT).show();
@@ -791,9 +826,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         startActivity(intent);
     }
 
-    public void loadLocation(View view) {
+    private void loadLocation(View view) {
         Intent intent = new Intent(this, LoadLocationActivity.class);
-        startActivityForResult(intent,1);
+        startActivityForResult(intent, 1);
     }
 
     @Override
@@ -813,10 +848,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         GPSswitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if(isChecked){
-                    if (! enableLocationUpdates()) GPSswitch.setChecked(false);
+                if (isChecked) {
+                    if (!enableLocationUpdates()) GPSswitch.setChecked(false);
                 } else {
-                    if (! disableLocationUpdates()) GPSswitch.setChecked(true);
+                    if (!disableLocationUpdates()) GPSswitch.setChecked(true);
                 }
             }
         });
@@ -836,8 +871,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             Intent intent = new Intent(this, SettingsActivity.class);
             startActivity(intent);
             return true;
-        }
-        else if (id == R.id.action_help) {
+        } else if (id == R.id.action_help) {
             Intent intent = new Intent(this, HelpActivity.class);
             startActivity(intent);
             return true;

@@ -51,6 +51,7 @@
     <!-- Strings related to Debug -->
 
     <string name="heading">Курс</string>
+    <string name="magnetic_declination">Магнитное склонение</string>
     <string name="accuracy">Точность GPS</string>
     <string name="current_longitude">Долгота текущая</string>
     <string name="current_latitude">Широта текущая</string>
@@ -67,6 +68,8 @@
     <string name="pref_debug_summ">Выводить координаты и прочие данные в режиме реального времени</string>
     <string name="pref_battery_save">Режим экономии батареи</string>
     <string name="pref_battery_save_summ">Менее точное и более долгое GPS-позиционирование</string>
+    <string name="pref_true_north">Истинный север</string>
+    <string name="pref_true_north_summ">Компенсировать магнитное склонение</string>
 
 
     <!-- Strings related to Help -->

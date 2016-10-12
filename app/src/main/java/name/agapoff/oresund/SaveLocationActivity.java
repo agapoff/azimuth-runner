@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -42,14 +43,19 @@ public class SaveLocationActivity extends AppCompatActivity {
         // Gets the data repository in write mode
         SQLiteDatabase db = mLocationDbHelper.getWritableDatabase();
 
-        // Create a new map of values, where column names are the keys
-        ContentValues values = new ContentValues();
-        values.put("name", locationName);
-        values.put("latitude", latitude);
-        values.put("longitude", longitude);
+        try {
+            // Create a new map of values, where column names are the keys
+            ContentValues values = new ContentValues();
+            values.put("name", locationName);
+            values.put("latitude", latitude);
+            values.put("longitude", longitude);
 
-        long newRowId = db.insert("location", null, values);
-        db.close();
+            long newRowId = db.insert("location", null, values);
+        } catch (Exception ex) {
+            Log.e("SaveLocationActivity", ex.toString());
+        } finally {
+            db.close();
+        }
         Toast.makeText(SaveLocationActivity.this, R.string.location_saved, Toast.LENGTH_SHORT).show();
         SaveLocationActivity.this.finish();
     }

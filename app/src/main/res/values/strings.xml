@@ -51,6 +51,7 @@
     <!-- Strings related to Debug -->
 
     <string name="heading">Heading</string>
+    <string name="magnetic_declination">Magnetic declination</string>
     <string name="accuracy">GPS Accuracy</string>
     <string name="current_longitude">Current Longitude</string>
     <string name="current_latitude">Current Latitude</string>
@@ -66,6 +67,8 @@
     <string name="pref_debug_summ">Display coordinates and other useful data in real time</string>
     <string name="pref_battery_save">Battery saving mode</string>
     <string name="pref_battery_save_summ">Less accurate GPS positioning and longer location obtaining after resuming the app</string>
+    <string name="pref_true_north">True north</string>
+    <string name="pref_true_north_summ">Compensate magnetic declination</string>
 
 
     <!-- Strings related to Help -->
